@@ -620,11 +620,19 @@
 
   function loadClues() {
     progressLabel.textContent = 'Loading clues…';
-    const s = document.createElement('script');
-    s.src = 'clues.js';
-    s.onload = initClues;
-    s.onerror = () => { progressLabel.textContent = 'Failed to load clues — please refresh'; };
-    document.head.appendChild(s);
+    fetch('clues.json')
+      .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(data => {
+        window.JEOPARDY_CLUES = data;
+        initClues();
+      })
+      .catch(err => {
+        progressLabel.textContent = 'Failed to load — please refresh';
+        console.error('clues.json load error:', err);
+      });
   }
 
   loadClues();
