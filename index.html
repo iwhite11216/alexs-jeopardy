@@ -282,6 +282,34 @@
       margin-bottom: 14px;
     }
 
+    /* ── Clue image ───────────────────────────────── */
+    #card-image-wrap {
+      display: none;
+      width: 100%;
+      max-height: 38%;
+      margin-bottom: 12px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 2px solid rgba(255,215,0,.4);
+      background: rgba(0,0,0,.3);
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    #card-image-wrap.visible { display: flex; }
+    #card-img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+    #card-img-status {
+      font-size: 0.7rem;
+      color: rgba(255,215,0,.6);
+      letter-spacing: 1px;
+      padding: 8px;
+    }
+
     .card-question {
       /* font-size set dynamically by fitCardText() */
       line-height: 1.5;
@@ -519,6 +547,10 @@
       <div class="card-face card-front">
         <div class="card-category" id="card-category"></div>
         <div class="card-value" id="card-value"></div>
+        <div id="card-image-wrap">
+          <img id="card-img" alt="Jeopardy clue image" />
+          <span id="card-img-status"></span>
+        </div>
         <div class="card-question" id="card-question"></div>
         <div class="card-hint">Tap to reveal · Swipe to navigate</div>
       </div>
@@ -720,15 +752,55 @@
   }
   shuffleBtn.addEventListener('click', shuffle);
 
+  // ── Parse J-Archive HTML out of question text ─────
+  const cardImageWrap = document.getElementById('card-image-wrap');
+  const cardImg       = document.getElementById('card-img');
+  const cardImgStatus = document.getElementById('card-img-status');
+
+  function parseQuestion(raw) {
+    const div = document.createElement('div');
+    div.innerHTML = raw;
+    let imageUrl = null, audioUrl = null;
+    div.querySelectorAll('a[href]').forEach(a => {
+      const href = a.getAttribute('href');
+      if (/\.(jpg|jpeg|png|gif)$/i.test(href)) imageUrl = href;
+      else if (/\.(mp3|wmv|wav|ogg)$/i.test(href)) audioUrl = href;
+    });
+    // plain text — links become their inner text
+    const text = div.textContent.trim().replace(/\s+/g, ' ');
+    return { text, imageUrl, audioUrl };
+  }
+
+  function showClueImage(imageUrl) {
+    if (!imageUrl) {
+      cardImageWrap.classList.remove('visible');
+      cardImg.src = '';
+      return;
+    }
+    cardImageWrap.classList.add('visible');
+    cardImgStatus.textContent = 'Loading image…';
+    cardImg.style.display = 'none';
+    cardImg.onload = () => {
+      cardImgStatus.textContent = '';
+      cardImg.style.display = 'block';
+      requestAnimationFrame(fitCardText);
+    };
+    cardImg.onerror = () => {
+      cardImgStatus.textContent = '📷 Image unavailable';
+      cardImg.style.display = 'none';
+    };
+    cardImg.src = imageUrl;
+  }
+
   // ── Text fitting — grows text to fill UP TO 70% of card height ──
   //    Binary search converges in ~10 iterations.
   //    Hard cap of 64px so single short words don't get absurdly large.
   const MAX_FONT = 64;
-  function fitElement(el, faceEl) {
+  function fitElement(el, faceEl, ratio = 0.70) {
     if (!el.textContent.trim()) return;
     const cardH = faceEl.clientHeight;
     if (!cardH) return;                  // card not painted yet — skip
-    const targetH = cardH * 0.70;
+    const targetH = cardH * ratio;
     el.style.fontSize = '8px';           // start small so scrollHeight is reliable
     let lo = 8, hi = MAX_FONT;
     while (hi - lo > 0.5) {
@@ -744,8 +816,10 @@
   function fitCardText() {
     const frontFace = document.querySelector('.card-front');
     const backFace  = document.querySelector('.card-back');
-    if (frontFace) fitElement(cardQuestion, frontFace);
-    if (backFace)  fitElement(cardAnswer,   backFace);
+    // if image is visible, it already takes ~38% — target remaining ~55%
+    const hasImg = cardImageWrap.classList.contains('visible') && cardImg.style.display !== 'none';
+    if (frontFace) fitElement(cardQuestion, frontFace, hasImg ? 0.45 : 0.70);
+    if (backFace)  fitElement(cardAnswer,   backFace,  0.70);
   }
 
   // ── Show card ──────────────────────────────────────
@@ -775,6 +849,11 @@
     cardValue.textContent    = c.value;
     cardAnswer.textContent   = c.answer;
     cardMeta.textContent     = c.airDate ? `Show #${c.show} · ${c.airDate}` : '';
+
+    // parse HTML out of question, extract image if present
+    const parsed = parseQuestion(c.question);
+    cardQuestion.textContent = parsed.text;
+    showClueImage(parsed.imageUrl);
 
     // fit text after DOM paints
     requestAnimationFrame(fitCardText);
