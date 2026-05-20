@@ -17,7 +17,6 @@
   <link rel="manifest" href="manifest.json" />
 
   <title>Alex's Jeopardy!</title>
-  <script src="clues.js"></script>
   <style>
     /* ── Reset & tokens ───────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -605,10 +604,10 @@
     banner.classList.remove('visible');
   });
 
-  // ── Load clues ─────────────────────────────────────
-  function loadClues() {
+  // ── Load clues dynamically (avoids blocking page render) ──
+  function initClues() {
     if (!window.JEOPARDY_CLUES || !window.JEOPARDY_CLUES.length) {
-      progressLabel.textContent = 'Error loading data';
+      progressLabel.textContent = 'Error loading data — please refresh';
       return;
     }
     allClues = window.JEOPARDY_CLUES.map(r => ({
@@ -618,6 +617,16 @@
     populateFilters();
     applyFilters();
   }
+
+  function loadClues() {
+    progressLabel.textContent = 'Loading clues…';
+    const s = document.createElement('script');
+    s.src = 'clues.js';
+    s.onload = initClues;
+    s.onerror = () => { progressLabel.textContent = 'Failed to load clues — please refresh'; };
+    document.head.appendChild(s);
+  }
+
   loadClues();
 
   // ── Populate filter selects ────────────────────────
