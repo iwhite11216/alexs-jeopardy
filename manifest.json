@@ -2,7 +2,7 @@
   "name": "Alex's Jeopardy!",
   "short_name": "Jeopardy!",
   "description": "Alex's Jeopardy flashcard game",
-  "start_url": "iphone.html",
+  "start_url": "index.html",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#060CE9",
