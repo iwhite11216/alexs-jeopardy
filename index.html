@@ -13,8 +13,13 @@
   <!-- Home screen icon (Safari will prompt to use this) -->
   <link rel="apple-touch-icon" href="icon-180.png" />
 
-  <!-- Web app manifest (for broader PWA support) -->
+  <!-- Web app manifest (Android + desktop PWA) -->
   <link rel="manifest" href="manifest.json" />
+  <!-- Android Chrome theme color -->
+  <meta name="theme-color" content="#060CE9" />
+  <!-- Desktop / Android install shortcut icons -->
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
 
   <title>Alex's Jeopardy!</title>
   <style>
@@ -661,6 +666,86 @@
       border: 2px solid #b01020;
     }
     .wrong-btn:active { background: #b01020; }
+
+    /* ── App wrapper (centers content on tablet/desktop) ── */
+    .app-wrapper {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      background: var(--blue);
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ── Tablet (≥ 600px) ─────────────────────────── */
+    @media (min-width: 600px) {
+      .card-face { padding: 28px 26px; }
+      .nav-btn   { font-size: 0.9rem; padding: 16px 10px; }
+      .flip-btn  { font-size: 0.95rem; }
+      .score-btn { font-size: 0.82rem; }
+      .wrong-btn { font-size: 0.68rem; }
+    }
+
+    /* ── Desktop (≥ 1024px) — phone-frame layout ─── */
+    @media (min-width: 1024px) {
+      html, body {
+        height: 100%;
+        overflow: hidden;
+      }
+      body {
+        background: #020560;
+        background-image: radial-gradient(ellipse at 50% 35%, #0d14cc 0%, #010340 100%);
+        align-items: center;
+        justify-content: center;
+        padding: 32px 0;
+      }
+      .app-wrapper {
+        width: 430px;
+        height: min(860px, calc(100vh - 64px));
+        flex: none;
+        border-radius: 36px;
+        box-shadow:
+          0 0 0 1.5px rgba(255,215,0,0.25),
+          0 32px 100px rgba(0,0,0,0.85),
+          0 8px 24px rgba(0,0,0,0.5);
+        overflow: hidden;
+      }
+      header {
+        position: relative; /* don't sticky inside the frame */
+        border-radius: 36px 36px 0 0;
+      }
+      .bottom-nav {
+        border-radius: 0 0 36px 36px;
+      }
+      /* Leaderboard: match the frame */
+      #leaderboard-screen {
+        width: 430px;
+        left: 50%;
+        right: auto;
+        top: 50%;
+        bottom: auto;
+        transform: translate(-50%, -50%);
+        height: min(860px, calc(100vh - 64px));
+        border-radius: 36px;
+        overflow: hidden;
+      }
+      #leaderboard-screen.hidden { display: none; }
+      /* Drawer: align to frame */
+      #drawer {
+        width: 430px;
+        left: 50%;
+        right: auto;
+        bottom: 32px;
+        transform: translateX(-50%) translateY(110%);
+        border-radius: 22px;
+      }
+      #drawer.open {
+        transform: translateX(-50%) translateY(0);
+      }
+      /* Backdrop still covers full screen */
+    }
   </style>
 </head>
 <body>
@@ -690,6 +775,7 @@
   </div>
 </div>
 
+<div class="app-wrapper">
 <!-- Header -->
 <header>
   <div class="logo">Alex's <span>Jeopardy!</span></div>
@@ -749,6 +835,8 @@
   <button class="nav-btn" id="next-btn">Next →</button>
 </div>
 
+</div><!-- /.app-wrapper -->
+
 <!-- Background music -->
 <audio id="bg-music" src="megalovania.mp3" loop playsinline preload="none"></audio>
 
@@ -805,17 +893,49 @@
   const applyBtn      = document.getElementById('apply-btn');
   const resetBtn      = document.getElementById('reset-btn');
 
-  // ── A2HS banner (only show in Safari browser, not standalone) ─
-  const isStandalone = window.navigator.standalone === true;
+  // ── Install banner (iOS Safari + Android/Desktop Chrome) ─
+  const isStandalone = window.navigator.standalone === true ||
+                       window.matchMedia('(display-mode: standalone)').matches;
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const banner = document.getElementById('a2hs-banner');
 
+  // iOS Safari: show manual "Add to Home Screen" instructions
   if (isIOS && !isStandalone) {
-    // show after 2 s so it doesn't block initial load
     setTimeout(() => banner.classList.add('visible'), 2000);
   }
   document.getElementById('a2hs-close').addEventListener('click', () => {
     banner.classList.remove('visible');
+  });
+
+  // Android / Desktop Chrome: intercept the native install prompt
+  let deferredInstallPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (!isStandalone) {
+      // Reuse the banner — swap text for a one-tap install button
+      banner.innerHTML = `
+        <div class="a2hs-row">
+          <div class="a2hs-text"><strong>Install Alex's Jeopardy!</strong> — add it to your home screen for the full app experience.</div>
+          <button class="a2hs-close" id="a2hs-close2">✕</button>
+        </div>
+        <button id="install-btn" style="
+          width:100%;margin-top:6px;padding:12px;border:none;border-radius:10px;
+          background:var(--gold);color:#000;font-weight:900;font-size:0.9rem;
+          letter-spacing:1px;text-transform:uppercase;cursor:pointer;">
+          ▼ Install App
+        </button>`;
+      setTimeout(() => banner.classList.add('visible'), 1500);
+      document.getElementById('install-btn').addEventListener('click', async () => {
+        banner.classList.remove('visible');
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+      });
+      document.getElementById('a2hs-close2').addEventListener('click', () => {
+        banner.classList.remove('visible');
+      });
+    }
   });
 
   // ── Load clues dynamically (avoids blocking page render) ──
@@ -1068,6 +1188,30 @@
 
   prevBtn.addEventListener('click', goPrev);
   nextBtn.addEventListener('click', goNext);
+
+  // ── Keyboard navigation (desktop) ─────────────────
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+    if (e.key === 'ArrowRight') goNext();
+    else if (e.key === 'ArrowLeft') goPrev();
+    else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flipCard(); }
+  });
+
+  // ── Mouse drag on card (desktop) ───────────────────
+  let mx0 = 0, mDragging = false;
+  card.addEventListener('mousedown', e => { mx0 = e.clientX; mDragging = false; });
+  document.addEventListener('mousemove', e => {
+    if (Math.abs(e.clientX - mx0) > 8) mDragging = true;
+  });
+  card.addEventListener('mouseup', e => {
+    if (mDragging) {
+      const dx = e.clientX - mx0;
+      if (Math.abs(dx) > 60) dx < 0 ? goNext() : goPrev();
+      // suppress the click event that would fire after
+      card.addEventListener('click', e => e.stopImmediatePropagation(), { once: true, capture: true });
+    }
+    mDragging = false;
+  });
 
   // ── Swipe on card (left = next, right = prev) ──────
   let tx0 = 0, ty0 = 0, dragging = false;
