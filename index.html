@@ -493,6 +493,7 @@
 <header>
   <div class="logo">Alex's <span>Jeopardy!</span></div>
   <div class="header-controls">
+    <button class="icon-btn" id="music-btn" title="Toggle music">🔇</button>
     <button class="icon-btn" id="shuffle-btn" title="Shuffle">🔀</button>
     <button class="filter-pill" id="filter-pill">
       <span>Filters</span>
@@ -824,6 +825,92 @@
     }
     dragging = false;
   }, { passive: true });
+
+  // ── Never Gonna Give You Up — Web Audio synth ─────
+  const musicBtn = document.getElementById('music-btn');
+  let audioCtx = null, musicPlaying = false, schedTimer = null;
+  let noteIdx = 0, nextNoteAt = 0;
+
+  // A major, 113 BPM
+  const BPM = 113, BEAT = 60 / BPM;
+  const [A3,B3,Cs4,D4,E4,Gs4,A4,B4,Cs5,D5,E5,Fs5,Gs5,A5] =
+    [220.00,246.94,277.18,293.66,329.63,415.30,440.00,493.88,554.37,587.33,659.25,739.99,830.61,880.00];
+  const _ = null; // rest
+
+  // [freq|null, beats]
+  const MELODY = [
+    // ── Iconic intro hook ─────────────────────────
+    [E5,.5],[E5,.5],[Gs5,.5],[E5,.5],
+    [D5,.5],[_,.5],[B4,1],[_,.25],[A4,1.25],
+
+    [A4,.5],[B4,.5],[D5,.5],[B4,.5],
+    [D5,.5],[E5,1.5],[_,.5],
+
+    [E5,.5],[E5,.5],[Gs5,.5],[E5,.5],
+    [D5,.5],[_,.5],[Cs5,1],[_,.25],[B4,1.25],
+
+    [A4,.5],[B4,.5],[D5,.5],[B4,.5],
+    [A4,2],[_,.5],
+
+    // ── "Never gonna give you up" ─────────────────
+    [A4,.25],[B4,.25],[D5,.5],[B4,.5],[D5,.75],[E5,.75],[_,.5],
+    // ── "Never gonna let you down" ────────────────
+    [A4,.25],[B4,.25],[D5,.5],[B4,.5],[Cs5,.75],[B4,.75],[_,.5],
+    // ── "Never gonna run around and desert you" ───
+    [A4,.25],[B4,.25],[D5,.5],[D5,.25],[E5,.25],[Cs5,.5],[B4,.5],[A4,1],[_,.5],
+    // ── "Never gonna make you cry" ────────────────
+    [A4,.25],[B4,.25],[D5,.5],[B4,.5],[E5,1.5],[_,.5],
+    // ── "Never gonna say goodbye" ─────────────────
+    [A4,.25],[B4,.25],[D5,.5],[B4,.5],[D5,.75],[Cs5,.5],[B4,.75],
+    // ── "Never gonna tell a lie and hurt you" ─────
+    [A4,.25],[B4,.25],[D5,.5],[D5,.25],[E5,.25],[Cs5,.5],[B4,.5],[A4,1],[_,1],
+  ];
+
+  function playNote(freq, dur, when) {
+    if (!freq) return;
+    const osc  = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = freq;
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    const end = when + dur * BEAT;
+    gain.gain.setValueAtTime(0, when);
+    gain.gain.linearRampToValueAtTime(0.12, when + 0.01);
+    gain.gain.setValueAtTime(0.12, end - 0.04);
+    gain.gain.linearRampToValueAtTime(0, end);
+    osc.start(when);
+    osc.stop(end);
+  }
+
+  function scheduler() {
+    while (nextNoteAt < audioCtx.currentTime + 0.15) {
+      const [freq, dur] = MELODY[noteIdx];
+      playNote(freq, dur, nextNoteAt);
+      nextNoteAt += dur * BEAT;
+      noteIdx = (noteIdx + 1) % MELODY.length;
+    }
+    schedTimer = setTimeout(scheduler, 30);
+  }
+
+  async function startMusic() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    musicPlaying = true;
+    nextNoteAt = audioCtx.currentTime + 0.05;
+    scheduler();
+    musicBtn.textContent = '🔊';
+  }
+
+  function stopMusic() {
+    musicPlaying = false;
+    clearTimeout(schedTimer);
+    musicBtn.textContent = '🔇';
+  }
+
+  musicBtn.addEventListener('click', () => {
+    musicPlaying ? stopMusic() : startMusic();
+  });
 </script>
 </body>
 </html>
