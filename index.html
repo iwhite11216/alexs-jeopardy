@@ -748,6 +748,9 @@
   <button class="nav-btn" id="next-btn">Next →</button>
 </div>
 
+<!-- Background music -->
+<audio id="bg-music" src="megalovania.mp3" loop playsinline preload="none"></audio>
+
 <!-- Filter drawer backdrop -->
 <div id="backdrop"></div>
 
@@ -1091,74 +1094,22 @@
     dragging = false;
   }, { passive: true });
 
-  // ── MEGALOVANIA — Web Audio synth ─────────────────
+  // ── Megalovania — audio element ────────────────────
   const musicBtn = document.getElementById('music-btn');
-  let audioCtx = null, musicPlaying = false, schedTimer = null;
-  let noteIdx = 0, nextNoteAt = 0;
-
-  // D minor, 120 BPM
-  const BPM = 120, BEAT = 60 / BPM;
-  const [Bb3,B3,C4,D4,Eb4,E4,F4,Fs4,G4,Gs4,A4,Bb4,B4,C5,Cs5,D5,Eb5,E5,F5,Fs5,G5] =
-    [233.08,246.94,261.63,293.66,311.13,329.63,349.23,369.99,392.00,415.30,440.00,
-     466.16,493.88,523.25,554.37,587.33,622.25,659.25,698.46,739.99,783.99];
-  const _ = null; // rest
-
-  // [freq|null, beats]  — iconic riff, loops
-  const MELODY = [
-    // ── Riff 1 (root D) ───────────────────────────
-    [D4,.25],[D4,.25],[D5,.5],[Gs4,.5],[_,.25],[G4,.25],[_,.25],[Fs4,.25],[F4,.75],[D4,.25],[F4,.25],[G4,.25],
-    // ── Riff 2 (root C) ───────────────────────────
-    [C4,.25],[C4,.25],[D5,.5],[Gs4,.5],[_,.25],[G4,.25],[_,.25],[Fs4,.25],[F4,.75],[D4,.25],[F4,.25],[G4,.25],
-    // ── Riff 3 (root B) ───────────────────────────
-    [B3,.25],[B3,.25],[D5,.5],[Gs4,.5],[_,.25],[G4,.25],[_,.25],[Fs4,.25],[F4,.75],[D4,.25],[F4,.25],[G4,.25],
-    // ── Riff 4 (root Bb) ──────────────────────────
-    [Bb3,.25],[Bb3,.25],[D5,.5],[Gs4,.5],[_,.25],[G4,.25],[_,.25],[Fs4,.25],[F4,.75],[D4,.25],[F4,.25],[_,.25],
-    // ── Verse melody ──────────────────────────────
-    [D5,.5],[_,.25],[D5,.25],[_,.25],[D5,.25],[C5,.5],[D5,.5],[_,.25],[A4,.25],[_,.25],[A4,.25],[Gs4,.5],[_,.5],
-    [G4,.5],[_,.25],[F4,.25],[D4,.25],[F4,.25],[G4,.5],[_,1],
-    [C5,.5],[_,.25],[C5,.25],[_,.25],[C5,.25],[B4,.5],[C5,.5],[_,.25],[G4,.25],[_,.25],[Gs4,.25],[Gs4,.5],[_,.5],
-    [G4,.5],[F4,.5],[_,.5],[D4,.25],[F4,.25],[G4,.5],[_,1],
-  ];
-
-  function playNote(freq, dur, when) {
-    if (!freq) return;
-    const osc  = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.value = freq;
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    const end = when + dur * BEAT;
-    gain.gain.setValueAtTime(0, when);
-    gain.gain.linearRampToValueAtTime(0.12, when + 0.01);
-    gain.gain.setValueAtTime(0.12, end - 0.04);
-    gain.gain.linearRampToValueAtTime(0, end);
-    osc.start(when);
-    osc.stop(end);
-  }
-
-  function scheduler() {
-    while (nextNoteAt < audioCtx.currentTime + 0.15) {
-      const [freq, dur] = MELODY[noteIdx];
-      playNote(freq, dur, nextNoteAt);
-      nextNoteAt += dur * BEAT;
-      noteIdx = (noteIdx + 1) % MELODY.length;
-    }
-    schedTimer = setTimeout(scheduler, 30);
-  }
+  const bgMusic  = document.getElementById('bg-music');
+  let musicPlaying = false;
 
   async function startMusic() {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') await audioCtx.resume();
-    musicPlaying = true;
-    nextNoteAt = audioCtx.currentTime + 0.05;
-    scheduler();
-    musicBtn.textContent = '🔊';
+    try {
+      await bgMusic.play();
+      musicPlaying = true;
+      musicBtn.textContent = '🔊';
+    } catch(e) { console.warn('Audio play failed:', e); }
   }
 
   function stopMusic() {
+    bgMusic.pause();
     musicPlaying = false;
-    clearTimeout(schedTimer);
     musicBtn.textContent = '🔇';
   }
 
@@ -1169,8 +1120,6 @@
   // Auto-start on first user interaction (iOS requires a gesture before audio plays)
   function autoStartMusic() {
     if (!musicPlaying) startMusic();
-    document.removeEventListener('touchstart', autoStartMusic);
-    document.removeEventListener('click', autoStartMusic);
   }
   document.addEventListener('touchstart', autoStartMusic, { once: true });
   document.addEventListener('click',      autoStartMusic, { once: true });
