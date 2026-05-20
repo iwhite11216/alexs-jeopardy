@@ -1091,51 +1091,40 @@
     dragging = false;
   }, { passive: true });
 
-  // ── Never Gonna Give You Up — Web Audio synth ─────
+  // ── MEGALOVANIA — Web Audio synth ─────────────────
   const musicBtn = document.getElementById('music-btn');
   let audioCtx = null, musicPlaying = false, schedTimer = null;
   let noteIdx = 0, nextNoteAt = 0;
 
-  // A major, 113 BPM
-  const BPM = 113, BEAT = 60 / BPM;
-  const [A3,B3,Cs4,D4,E4,Gs4,A4,B4,Cs5,D5,E5,Fs5,Gs5,A5] =
-    [220.00,246.94,277.18,293.66,329.63,415.30,440.00,493.88,554.37,587.33,659.25,739.99,830.61,880.00];
+  // D minor, 120 BPM
+  const BPM = 120, BEAT = 60 / BPM;
+  const [Bb3,B3,C4,D4,Eb4,E4,F4,Fs4,G4,Gs4,A4,Bb4,B4,C5,Cs5,D5,Eb5,E5,F5,Fs5,G5] =
+    [233.08,246.94,261.63,293.66,311.13,329.63,349.23,369.99,392.00,415.30,440.00,
+     466.16,493.88,523.25,554.37,587.33,622.25,659.25,698.46,739.99,783.99];
   const _ = null; // rest
 
-  // [freq|null, beats]
+  // [freq|null, beats]  — iconic riff, loops
   const MELODY = [
-    // ── Iconic intro hook ─────────────────────────
-    [E5,.5],[E5,.5],[Gs5,.5],[E5,.5],
-    [D5,.5],[_,.5],[B4,1],[_,.25],[A4,1.25],
-
-    [A4,.5],[B4,.5],[D5,.5],[B4,.5],
-    [D5,.5],[E5,1.5],[_,.5],
-
-    [E5,.5],[E5,.5],[Gs5,.5],[E5,.5],
-    [D5,.5],[_,.5],[Cs5,1],[_,.25],[B4,1.25],
-
-    [A4,.5],[B4,.5],[D5,.5],[B4,.5],
-    [A4,2],[_,.5],
-
-    // ── "Never gonna give you up" ─────────────────
-    [A4,.25],[B4,.25],[D5,.5],[B4,.5],[D5,.75],[E5,.75],[_,.5],
-    // ── "Never gonna let you down" ────────────────
-    [A4,.25],[B4,.25],[D5,.5],[B4,.5],[Cs5,.75],[B4,.75],[_,.5],
-    // ── "Never gonna run around and desert you" ───
-    [A4,.25],[B4,.25],[D5,.5],[D5,.25],[E5,.25],[Cs5,.5],[B4,.5],[A4,1],[_,.5],
-    // ── "Never gonna make you cry" ────────────────
-    [A4,.25],[B4,.25],[D5,.5],[B4,.5],[E5,1.5],[_,.5],
-    // ── "Never gonna say goodbye" ─────────────────
-    [A4,.25],[B4,.25],[D5,.5],[B4,.5],[D5,.75],[Cs5,.5],[B4,.75],
-    // ── "Never gonna tell a lie and hurt you" ─────
-    [A4,.25],[B4,.25],[D5,.5],[D5,.25],[E5,.25],[Cs5,.5],[B4,.5],[A4,1],[_,1],
+    // ── Riff 1 (root D) ───────────────────────────
+    [D4,.25],[D4,.25],[D5,.5],[Gs4,.5],[_,.25],[G4,.25],[_,.25],[Fs4,.25],[F4,.75],[D4,.25],[F4,.25],[G4,.25],
+    // ── Riff 2 (root C) ───────────────────────────
+    [C4,.25],[C4,.25],[D5,.5],[Gs4,.5],[_,.25],[G4,.25],[_,.25],[Fs4,.25],[F4,.75],[D4,.25],[F4,.25],[G4,.25],
+    // ── Riff 3 (root B) ───────────────────────────
+    [B3,.25],[B3,.25],[D5,.5],[Gs4,.5],[_,.25],[G4,.25],[_,.25],[Fs4,.25],[F4,.75],[D4,.25],[F4,.25],[G4,.25],
+    // ── Riff 4 (root Bb) ──────────────────────────
+    [Bb3,.25],[Bb3,.25],[D5,.5],[Gs4,.5],[_,.25],[G4,.25],[_,.25],[Fs4,.25],[F4,.75],[D4,.25],[F4,.25],[_,.25],
+    // ── Verse melody ──────────────────────────────
+    [D5,.5],[_,.25],[D5,.25],[_,.25],[D5,.25],[C5,.5],[D5,.5],[_,.25],[A4,.25],[_,.25],[A4,.25],[Gs4,.5],[_,.5],
+    [G4,.5],[_,.25],[F4,.25],[D4,.25],[F4,.25],[G4,.5],[_,1],
+    [C5,.5],[_,.25],[C5,.25],[_,.25],[C5,.25],[B4,.5],[C5,.5],[_,.25],[G4,.25],[_,.25],[Gs4,.25],[Gs4,.5],[_,.5],
+    [G4,.5],[F4,.5],[_,.5],[D4,.25],[F4,.25],[G4,.5],[_,1],
   ];
 
   function playNote(freq, dur, when) {
     if (!freq) return;
     const osc  = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.type = 'square';
+    osc.type = 'sawtooth';
     osc.frequency.value = freq;
     osc.connect(gain);
     gain.connect(audioCtx.destination);
