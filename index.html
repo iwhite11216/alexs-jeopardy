@@ -990,6 +990,15 @@
   musicBtn.addEventListener('click', () => {
     musicPlaying ? stopMusic() : startMusic();
   });
+
+  // Auto-start on first user interaction (iOS requires a gesture before audio plays)
+  function autoStartMusic() {
+    if (!musicPlaying) startMusic();
+    document.removeEventListener('touchstart', autoStartMusic);
+    document.removeEventListener('click', autoStartMusic);
+  }
+  document.addEventListener('touchstart', autoStartMusic, { once: true });
+  document.addEventListener('click',      autoStartMusic, { once: true });
 </script>
 </body>
 </html>
