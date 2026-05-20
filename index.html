@@ -654,6 +654,13 @@
       if (cat && !c.category.toLowerCase().includes(cat)) return false;
       return true;
     });
+
+    // always randomise order so questions are never sequential
+    for (let i = filteredClues.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [filteredClues[i], filteredClues[j]] = [filteredClues[j], filteredClues[i]];
+    }
+
     currentIndex = 0;
     showCard();
 
@@ -695,19 +702,24 @@
   }
   shuffleBtn.addEventListener('click', shuffle);
 
-  // ── Text fitting — grows text to fill 70% of card height ──
-  //    Uses binary search so it converges in ~10 iterations
+  // ── Text fitting — grows text to fill UP TO 70% of card height ──
+  //    Binary search converges in ~10 iterations.
+  //    Hard cap of 64px so single short words don't get absurdly large.
+  const MAX_FONT = 64;
   function fitElement(el, faceEl) {
     if (!el.textContent.trim()) return;
-    const targetH = faceEl.clientHeight * 0.70;
+    const cardH = faceEl.clientHeight;
+    if (!cardH) return;                  // card not painted yet — skip
+    const targetH = cardH * 0.70;
     el.style.fontSize = '8px';           // start small so scrollHeight is reliable
-    let lo = 8, hi = 200;
+    let lo = 8, hi = MAX_FONT;
     while (hi - lo > 0.5) {
       const mid = (lo + hi) / 2;
       el.style.fontSize = mid + 'px';
       if (el.scrollHeight <= targetH) lo = mid;
       else hi = mid;
     }
+    // never exceed 70% — clamp down if needed
     el.style.fontSize = Math.floor(lo) + 'px';
   }
 
